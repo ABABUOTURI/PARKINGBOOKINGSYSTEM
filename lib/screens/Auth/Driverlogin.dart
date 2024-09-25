@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:parking_booking_system/screens/Auth/DriverReg.dart';
+import 'package:parking_booking_system/screens/Auth/DriverReg.dart'; // Import your registration page
+import 'package:parking_booking_system/screens/Driver/Dashboard.dart'; // Import the dashboard page
 
 class DriverLoginPage extends StatefulWidget {
   @override
@@ -21,7 +22,7 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
       // Navigate to Dashboard if login is successful
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => DashboardPage()),
+        MaterialPageRoute(builder: (context) => DashboardPage()), // Navigate to DashboardPage
       );
     } else {
       // Show an alert for failed login
@@ -105,7 +106,7 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
 
             // Login Button
             ElevatedButton(
-              onPressed: _login,
+              onPressed: _login, // Calls the _login function
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF07244C), // Button color
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
@@ -137,12 +138,13 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
 
             // Register link
             TextButton(
-             onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => RegistrationPage()), // Navigate to DriverRegPage
-    );
-  },
+              onPressed: () {
+                // Navigate to RegistrationPage (DriverReg.dart)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RegistrationPage()), // Navigate to RegistrationPage
+                );
+              },
               child: Text(
                 "Don't have an Account? Register",
                 style: TextStyle(color: Color(0xFFE5EAF3)), // Text color
@@ -150,18 +152,6 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class DashboardPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Dashboard")),
-      body: Center(
-        child: Text("Welcome to the Dashboard!"),
       ),
     );
   }
