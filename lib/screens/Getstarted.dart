@@ -144,7 +144,7 @@ class _GetStartedPageState extends State<GetStartedPage>
                     // Navigate to the DriverLogin page
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => DriverLoginPage()),
+                      MaterialPageRoute(builder: (context) => UnifiedLoginPage()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

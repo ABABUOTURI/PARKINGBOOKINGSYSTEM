@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "996583440960",
+    "project_id": "parking-booking-app-71322",
+    "storage_bucket": "parking-booking-app-71322.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996583440960:android:a8a5c4484bbb1499a8d5a5",
+        "android_client_info": {
+          "package_name": "com.example.parking_booking_system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3V7ax4tKoe0xroQGp94ctOw8kMotRjqc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

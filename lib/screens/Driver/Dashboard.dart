@@ -2,6 +2,7 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:parking_booking_system/screens/Driver/BookingDetails.dart';
 import 'package:parking_booking_system/screens/Driver/ReservationManagement.dart';
+import 'package:parking_booking_system/screens/Driver/SubmitFeedback.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -130,15 +131,24 @@ class _DashboardPageState extends State<DashboardPage> {
         height: 60,
         items: <Widget>[
           Icon(Icons.home, size: 30, color: Color(0xFF07244C)),
-          Icon(Icons.search, size: 30, color: Color(0xFF07244C)),
+           Icon(Icons.feedback, size: 30, color: Color(0xFF07244C)),
           Icon(Icons.settings, size: 30, color: Color(0xFF07244C)),
           Icon(Icons.notifications, size: 30, color: Color(0xFF07244C)),
           Icon(Icons.person, size: 30, color: Color(0xFF07244C)),
         ],
-        onTap: (index) {
-          // Handle bottom navigation bar item tap
-          print("Nav bar item $index clicked");
-        },
+       onTap: (index) {
+    if (index == 1) {
+      // Navigate to the feedback submission page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>  DriversSubmitFeedbackPage(), // Replace with your feedback page
+        ),
+      );
+    }
+    //Handle other taps if necessary
+    print("Nav bar item $index clicked");
+  },
       ),
     );
   }
