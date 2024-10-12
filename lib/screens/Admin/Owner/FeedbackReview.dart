@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:parking_booking_system/models/feedback.dart' as customFeedback; // Alias the Feedback model import
 
 class FeedbackReviewPage extends StatelessWidget {
   @override
@@ -9,67 +11,60 @@ class FeedbackReviewPage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Color(0xFF7671FA),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Filter Options
-            _buildFilterOptions(context),
-            SizedBox(height: 10),
+      body: FutureBuilder<Box<customFeedback.Feedback>>(
+        future: Hive.openBox<customFeedback.Feedback>('feedback'), // Open feedback box
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else {
+            final feedbackBox = snapshot.data!;
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Filter Options
+                  _buildFilterOptions(context),
+                  SizedBox(height: 10),
 
-            // List of Submitted Feedback
-            Expanded(
-              child: ListView.builder(
-                itemCount: feedbackList.length,
-                itemBuilder: (context, index) {
-                  return _buildFeedbackCard(feedbackList[index]);
-                },
-              ),
-            ),
-            SizedBox(height: 10),
+                  // List of Submitted Feedback
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: feedbackBox.length,
+                      itemBuilder: (context, index) {
+                        // Cast the retrieved value to ensure it's not null
+                        customFeedback.Feedback? feedback = feedbackBox.getAt(index);
+                        if (feedback != null) {
+                          return _buildFeedbackCard(feedback);
+                        } else {
+                          return Text("No feedback available");
+                        }
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 10),
 
-            // Export Report Button
-            ElevatedButton(
-              onPressed: () {
-                // Action to export feedback report
-                _exportFeedbackReport();
-              },
-              child: Text("Export Feedback Report"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF07244C),
-                padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
+                  // Export Report Button
+                  ElevatedButton(
+                    onPressed: () {
+                      // Action to export feedback report
+                      _exportFeedbackReport();
+                    },
+                    child: Text("Export Feedback Report"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF07244C),
+                      padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
     );
   }
-
-  // Mock data for feedback
-  final List<Feedback> feedbackList = [
-    Feedback(
-      rating: 5,
-      comment: "Great parking experience!",
-      location: "Downtown Parking",
-      date: "2024-09-01",
-      isResolved: false,
-    ),
-    Feedback(
-      rating: 3,
-      comment: "There were no available slots.",
-      location: "Airport Parking",
-      date: "2024-09-02",
-      isResolved: true,
-    ),
-    Feedback(
-      rating: 4,
-      comment: "Good service but a bit pricey.",
-      location: "Mall Parking",
-      date: "2024-09-03",
-      isResolved: false,
-    ),
-  ];
 
   // Build filter options
   Widget _buildFilterOptions(BuildContext context) {
@@ -85,7 +80,7 @@ class FeedbackReviewPage extends StatelessWidget {
             );
           }).toList(),
           onChanged: (int? value) {
-            // Handle rating filter
+            // Handle rating filter logic here
           },
         ),
         DropdownButton<String>(
@@ -102,7 +97,7 @@ class FeedbackReviewPage extends StatelessWidget {
             );
           }).toList(),
           onChanged: (String? value) {
-            // Handle location filter
+            // Handle location filter logic here
           },
         ),
       ],
@@ -110,7 +105,7 @@ class FeedbackReviewPage extends StatelessWidget {
   }
 
   // Build feedback card
-  Widget _buildFeedbackCard(Feedback feedback) {
+  Widget _buildFeedbackCard(customFeedback.Feedback feedback) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 10.0),
       child: ListTile(
@@ -118,14 +113,13 @@ class FeedbackReviewPage extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(feedback.comment),
-            Text("Location: ${feedback.location}"),
-            Text("Date: ${feedback.date}"),
+            Text(feedback.comment ?? "No comments"), // Ensure 'comment' property exists in the model
+            Text("Location: ${feedback.location ?? 'Unknown'}"),
+            Text("Date: ${feedback.date ?? 'Unknown'}"),
             if (!feedback.isResolved)
               TextButton(
                 onPressed: () {
-                  // Mark as resolved
-                  // You may want to add logic to update the feedback list
+                  // Mark as resolved logic
                 },
                 child: Text("Mark as Resolved", style: TextStyle(color: Colors.blue)),
               ),
@@ -140,21 +134,4 @@ class FeedbackReviewPage extends StatelessWidget {
     // Logic to export feedback data, e.g., to CSV or PDF
     print("Exporting feedback report...");
   }
-}
-
-// Model class for Feedback
-class Feedback {
-  final int rating;
-  final String comment;
-  final String location;
-  final String date;
-  final bool isResolved;
-
-  Feedback({
-    required this.rating,
-    required this.comment,
-    required this.location,
-    required this.date,
-    required this.isResolved,
-  });
 }

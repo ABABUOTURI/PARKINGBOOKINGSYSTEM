@@ -1,9 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 
-class ReservationManagementPage extends StatelessWidget {
+class ReservationManagementPage extends StatefulWidget {
+  @override
+  _ReservationManagementPageState createState() => _ReservationManagementPageState();
+}
+
+class _ReservationManagementPageState extends State<ReservationManagementPage> {
+  late Box bookingBox; // Hive box for storing bookings
+
+  @override
+  void initState() {
+    super.initState();
+    _openBox(); // Open Hive box for bookings
+  }
+
+  // Open Hive box for bookings
+  void _openBox() async {
+    bookingBox = await Hive.openBox('bookings');
+    setState(() {}); // Trigger a rebuild after opening the box
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (bookingBox == null) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Color(0xFFE5EAF3),
       appBar: AppBar(
@@ -27,13 +53,7 @@ class ReservationManagementPage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 10),
-              _buildBookingCard(
-                context,
-                "Parking Slot A12",
-                "Jan 12, 2024 - 3:00 PM",
-                "Location: XYZ Street",
-                isUpcoming: true,
-              ),
+              _buildBookingList(context, isUpcoming: true), // Display upcoming bookings
               SizedBox(height: 20),
 
               // Past Bookings Section
@@ -46,24 +66,41 @@ class ReservationManagementPage extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 10),
-              _buildBookingCard(
-                context,
-                "Parking Slot B23",
-                "Dec 18, 2023 - 10:00 AM",
-                "Location: ABC Avenue",
-                isUpcoming: false,
-              ),
-              _buildBookingCard(
-                context,
-                "Parking Slot C34",
-                "Nov 24, 2023 - 6:00 PM",
-                "Location: DEF Street",
-                isUpcoming: false,
-              ),
+              _buildBookingList(context, isUpcoming: false), // Display past bookings
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // Helper method to build booking list from Hive
+  Widget _buildBookingList(BuildContext context, {required bool isUpcoming}) {
+    List<dynamic> bookings = bookingBox.values.toList();
+    // Filter bookings by upcoming or past
+    List<dynamic> filteredBookings = bookings.where((booking) {
+      DateTime bookingDate = DateTime.parse(booking['dateTime']);
+      if (isUpcoming) {
+        return bookingDate.isAfter(DateTime.now());
+      } else {
+        return bookingDate.isBefore(DateTime.now());
+      }
+    }).toList();
+
+    if (filteredBookings.isEmpty) {
+      return Text("No bookings available.");
+    }
+
+    return Column(
+      children: filteredBookings.map((booking) {
+        return _buildBookingCard(
+          context,
+          booking['title'],
+          booking['dateTime'],
+          booking['location'],
+          isUpcoming: isUpcoming,
+        );
+      }).toList(),
     );
   }
 
@@ -116,17 +153,7 @@ class ReservationManagementPage extends StatelessWidget {
                     icon: Icons.edit,
                     label: "Modify",
                     onPressed: () {
-                      // Navigate to Modify Booking Page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ModifyBookingPage(
-                            title: title,
-                            dateTime: dateTime,
-                            location: location,
-                          ),
-                        ),
-                      );
+                      _showModifyPopup(context, title, dateTime, location, bookingBox);
                     },
                   ),
                 if (isUpcoming) SizedBox(width: 8),
@@ -136,8 +163,7 @@ class ReservationManagementPage extends StatelessWidget {
                     icon: Icons.cancel,
                     label: "Cancel",
                     onPressed: () {
-                      // Show confirmation dialog for canceling the booking
-                      _showCancelConfirmationDialog(context);
+                      _cancelBooking(context, title);
                     },
                   ),
                 // Add Rebook button for past bookings
@@ -148,17 +174,7 @@ class ReservationManagementPage extends StatelessWidget {
                     icon: Icons.repeat,
                     label: "Rebook",
                     onPressed: () {
-                      // Navigate to Modify Booking Page for rebooking
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ModifyBookingPage(
-                            title: title,
-                            dateTime: dateTime,
-                            location: location,
-                          ),
-                        ),
-                      );
+                      _showRebookPopup(context, title, dateTime, location, bookingBox);
                     },
                   ),
               ],
@@ -184,8 +200,175 @@ class ReservationManagementPage extends StatelessWidget {
     );
   }
 
-  // Helper method to show cancellation confirmation dialog
-  void _showCancelConfirmationDialog(BuildContext context) {
+  // Show Modify Popup for rescheduling booking
+  void _showModifyPopup(BuildContext context, String title, String dateTime, String location, Box bookingBox) {
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Modify Booking'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text("Select Date"),
+                subtitle: Text(selectedDate != null ? DateFormat('MMM dd, yyyy').format(selectedDate!) : "No date selected"),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2101),
+                  );
+                  if (pickedDate != null) {
+                    setState(() {
+                      selectedDate = pickedDate;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                title: Text("Select Time"),
+                subtitle: Text(selectedTime != null ? selectedTime!.format(context) : "No time selected"),
+                trailing: Icon(Icons.access_time),
+                onTap: () async {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (pickedTime != null) {
+                    setState(() {
+                      selectedTime = pickedTime;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Save'),
+              onPressed: () {
+                if (selectedDate != null && selectedTime != null) {
+                  // Update the booking in Hive with the new date/time
+                  DateTime newDateTime = DateTime(
+                    selectedDate!.year,
+                    selectedDate!.month,
+                    selectedDate!.day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+                  bookingBox.put(title, {
+                    'title': title,
+                    'dateTime': newDateTime.toIso8601String(),
+                    'location': location,
+                  });
+                  setState(() {}); // Trigger UI update
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Show Rebook Popup for rescheduling past booking
+  void _showRebookPopup(BuildContext context, String title, String dateTime, String location, Box bookingBox) {
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Rebook Parking Slot'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text("Select Date"),
+                subtitle: Text(selectedDate != null ? DateFormat('MMM dd, yyyy').format(selectedDate!) : "No date selected"),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2101),
+                  );
+                  if (pickedDate != null) {
+                    setState(() {
+                      selectedDate = pickedDate;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                title: Text("Select Time"),
+                subtitle: Text(selectedTime != null ? selectedTime!.format(context) : "No time selected"),
+                trailing: Icon(Icons.access_time),
+                onTap: () async {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (pickedTime != null) {
+                    setState(() {
+                      selectedTime = pickedTime;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Rebook'),
+              onPressed: () {
+                if (selectedDate != null && selectedTime != null) {
+                  DateTime newDateTime = DateTime(
+                    selectedDate!.year,
+                    selectedDate!.month,
+                    selectedDate!.day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+                  bookingBox.put(title, {
+                    'title': title,
+                    'dateTime': newDateTime.toIso8601String(),
+                    'location': location,
+                  });
+                  setState(() {}); // Trigger UI update
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Cancel the booking and delete it from Hive
+  void _cancelBooking(BuildContext context, String title) {
     showDialog(
       context: context,
       builder: (context) {
@@ -202,7 +385,8 @@ class ReservationManagementPage extends StatelessWidget {
             TextButton(
               child: Text("Yes"),
               onPressed: () {
-                // Handle cancellation logic here
+                bookingBox.delete(title); // Delete booking from Hive
+                setState(() {}); // Trigger UI update
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Booking Canceled')));
                 Navigator.of(context).pop(); // Close the dialog
               },
@@ -211,164 +395,5 @@ class ReservationManagementPage extends StatelessWidget {
         );
       },
     );
-  }
-}
-
-// New Page for Modifying Booking
-class ModifyBookingPage extends StatefulWidget {
-  final String title;
-  final String dateTime;
-  final String location;
-
-  ModifyBookingPage({required this.title, required this.dateTime, required this.location});
-
-  @override
-  _ModifyBookingPageState createState() => _ModifyBookingPageState();
-}
-
-class _ModifyBookingPageState extends State<ModifyBookingPage> {
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-
-  @override
-  void initState() {
-    super.initState();
-    // Parse initial date and time from the string
-    _parseDateTime(widget.dateTime);
-  }
-
-  void _parseDateTime(String dateTime) {
-    try {
-      final dateParts = dateTime.split(" - ");
-      if (dateParts.length == 2) {
-        // Attempt to parse date (assuming format is "MMM dd, yyyy")
-        _selectedDate = _parseDate(dateParts[0].trim());
-        
-        // Attempt to parse time
-        final timeParts = dateParts[1].split(":");
-        if (timeParts.length >= 2) {
-          int hour = int.parse(timeParts[0].trim());
-          int minute = int.parse(timeParts[1].trim().split(" ")[0]);
-
-          // Handle AM/PM
-          if (timeParts[1].trim().contains("PM") && hour < 12) {
-            hour += 12; // Convert PM hour to 24-hour format
-          } else if (timeParts[1].trim().contains("AM") && hour == 12) {
-            hour = 0; // Midnight case
-          }
-
-          _selectedTime = TimeOfDay(hour: hour, minute: minute);
-        } else {
-          throw FormatException("Invalid time format.");
-        }
-      } else {
-        throw FormatException("Invalid date/time format.");
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error parsing date/time: $e')));
-    }
-  }
-
-  DateTime _parseDate(String date) {
-    // Parse the date from "MMM dd, yyyy" format
-    return DateFormat('MMM dd, yyyy').parse(date);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFF7671FA),
-        title: Text("Modify Booking"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Booking Information",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Text("Title: ${widget.title}"),
-            Text("Current Date/Time: ${widget.dateTime}"),
-            Text("Location: ${widget.location}"),
-            SizedBox(height: 20),
-
-            // Date and Time Picker
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: ListTile(
-                    title: Text("Select Date"),
-                    subtitle: Text(_selectedDate != null
-                        ? DateFormat('MMM dd, yyyy').format(_selectedDate!)
-                        : "No date selected"),
-                    trailing: Icon(Icons.calendar_today),
-                    onTap: () => _selectDate(context),
-                  ),
-                ),
-                SizedBox(width: 20),
-                Expanded(
-                  child: ListTile(
-                    title: Text("Select Time"),
-                    subtitle: Text(_selectedTime != null
-                        ? _selectedTime!.format(context)
-                        : "No time selected"),
-                    trailing: Icon(Icons.access_time),
-                    onTap: () => _selectTime(context),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-
-
-            // Modify Booking Button
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  // Handle modification logic
-                  // Optionally, navigate back or show confirmation
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Booking Modified Successfully')));
-                },
-                child: Text("Modify Booking"),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Select Date method
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  // Select Time method
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
-    );
-    if (picked != null && picked != _selectedTime) {
-      setState(() {
-        _selectedTime = picked;
-      });
-    }
   }
 }

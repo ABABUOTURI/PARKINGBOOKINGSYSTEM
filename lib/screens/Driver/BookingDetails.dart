@@ -1,21 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:parking_booking_system/screens/Driver/PaymentConfirmation.dart';
+import 'package:hive/hive.dart';
+import 'package:parking_booking_system/models/parking_location.dart';
+import 'package:parking_booking_system/models/payment.dart'; // Import your payment model
+import 'package:parking_booking_system/screens/Driver/PaymentConfirmation.dart'; // Assuming ParkingLocation is defined
 
-// Booking Details Page
-class BookingDetailsPage extends StatelessWidget {
+class BookingDetailsPage extends StatefulWidget {
   final String parkingSpotName;
-  final String bookingDate;
-  final String bookingTime;
-  final String parkingSpaceType;
-  final double price;
+  final double pricePerHour;
 
   BookingDetailsPage({
     required this.parkingSpotName,
-    required this.bookingDate,
-    required this.bookingTime,
-    required this.parkingSpaceType,
-    required this.price,
+    required this.pricePerHour, required String bookingDate, required double price, required String parkingSpaceType, required String bookingTime,
   });
+
+  @override
+  _BookingDetailsPageState createState() => _BookingDetailsPageState();
+}
+
+class _BookingDetailsPageState extends State<BookingDetailsPage> {
+  int _selectedHours = 2; // Default parking hours
+  double _totalPrice = 0.0;
+  String _bookingDate = ""; // To hold booking date
+  String _bookingTime = ""; // To hold booking time
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPaymentData(); // Fetch payment data
+    _calculateTotalPrice(); // Calculate total price based on initial hours
+  }
+
+  // Fetch payment data from Hive
+  void _fetchPaymentData() async {
+    final paymentBox = await Hive.openBox<Payment>('paymentBox'); // Open Hive box for payments
+    if (paymentBox.isNotEmpty) {
+      Payment? payment = paymentBox.getAt(0); // Assuming you want the latest payment
+      if (payment != null) {
+        setState(() {
+          _bookingDate = payment.bookingDate; // Set booking date from payment
+          _bookingTime = payment.bookingTime; // Set booking time from payment
+        });
+      }
+    }
+  }
+
+  // Method to calculate total price
+  void _calculateTotalPrice() {
+    setState(() {
+      _totalPrice = widget.pricePerHour * _selectedHours;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +65,16 @@ class BookingDetailsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Parking Spot Location Name
-            _buildDetailItem("Parking Spot Location", parkingSpotName),
+            _buildDetailItem("Parking Spot Location", widget.parkingSpotName),
             SizedBox(height: 16),
 
             // Date and Time of Booking
-            _buildDetailItem("Date & Time", "$bookingDate | $bookingTime"),
+            _buildDetailItem("Date & Time", "$_bookingDate | $_bookingTime"),
             SizedBox(height: 16),
 
-            // Parking Space Type
-            _buildDetailItem("Parking Space Type", parkingSpaceType),
+            // Hours Slider
+            _buildHoursSlider(),
+
             SizedBox(height: 16),
 
             // Price Calculation
@@ -79,6 +114,40 @@ class BookingDetailsPage extends StatelessWidget {
     );
   }
 
+  // Helper to build the hours slider
+  Widget _buildHoursSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Parking Duration (hours)",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF07244C),
+          ),
+        ),
+        Slider(
+          value: _selectedHours.toDouble(),
+          min: 1,
+          max: 24, // Max 24 hours
+          divisions: 23, // 23 intervals (1 to 24 hours)
+          label: "${_selectedHours} hours",
+          onChanged: (double value) {
+            setState(() {
+              _selectedHours = value.toInt();
+              _calculateTotalPrice(); // Recalculate total price when hours are changed
+            });
+          },
+        ),
+        Text(
+          "Selected Duration: $_selectedHours hours",
+          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+        ),
+      ],
+    );
+  }
+
   // Helper to build the price section
   Widget _buildPriceSection() {
     return Column(
@@ -101,7 +170,7 @@ class BookingDetailsPage extends StatelessWidget {
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
             Text(
-              "\$${price.toStringAsFixed(2)}",
+              "\$${widget.pricePerHour.toStringAsFixed(2)}",
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
           ],
@@ -115,7 +184,7 @@ class BookingDetailsPage extends StatelessWidget {
               style: TextStyle(fontSize: 16, color: Color(0xFF07244C)),
             ),
             Text(
-              "\$${(price * 2).toStringAsFixed(2)}", // Assume 2 hours
+              "\$${_totalPrice.toStringAsFixed(2)}",
               style: TextStyle(fontSize: 16, color: Color(0xFF07244C)),
             ),
           ],
@@ -134,8 +203,8 @@ class BookingDetailsPage extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (context) => PaymentOptionsPage(
-                parkingSpotName: parkingSpotName,
-                totalPrice: price * 2, // Assuming 2 hours for total price
+                parkingSpotName: widget.parkingSpotName,
+                totalPrice: _totalPrice, // Pass the dynamically calculated total price
               ),
             ),
           );
@@ -287,4 +356,3 @@ class PaymentOptionsPage extends StatelessWidget {
     );
   }
 }
-

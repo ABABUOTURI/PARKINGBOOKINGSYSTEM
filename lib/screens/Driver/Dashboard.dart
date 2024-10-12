@@ -1,8 +1,12 @@
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:parking_booking_system/models/parking_location.dart';
+import 'package:parking_booking_system/models/user.dart';
 import 'package:parking_booking_system/screens/Driver/BookingDetails.dart';
 import 'package:parking_booking_system/screens/Driver/ReservationManagement.dart';
 import 'package:parking_booking_system/screens/Driver/SubmitFeedback.dart';
+
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -10,21 +14,55 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final String userName = "Ababu Oturi"; // Dynamically fetch based on the logged-in user
+  String _userName = ''; // Default user name
+  String _userInitials = ''; // Default user initials
   RangeValues _priceRange = RangeValues(10, 100); // Price range filter
-  String _parkingType = "Covered"; // Parking type filter
-  String _parkingDuration = "Hourly"; // Parking duration filter
+  String _statusFilter = "All"; // Status filter
+  String _searchQuery = ""; // Search query state
+  List<ParkingLocation> _parkingSlots = []; // List to store parking slots from Hive
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // Key for the scaffold
 
-  String getInitials(String name) {
-    List<String> nameParts = name.split(" ");
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData(); // Fetch user data from Hive upon initialization
+    _fetchParkingSlots(); // Fetch parking slots from Hive upon initialization
+  }
+
+  // Fetch user data from Hive (local storage)
+  void _fetchUserData() async {
+    final userBox = await Hive.openBox<User>('userBox'); // Open Hive box
+    if (userBox.isNotEmpty) {
+      User? user = userBox.getAt(0); // Get the first user (assuming only one logged-in user)
+      if (user != null) {
+        setState(() {
+          _userName = user.fullName; // Set the user's full name
+          _userInitials = _getInitials(user.fullName); // Set the initials based on full name
+        });
+      }
+    }
+  }
+
+  // Fetch parking slots from Hive (local storage)
+  void _fetchParkingSlots() async {
+    final parkingBox = await Hive.openBox<ParkingLocation>('parking_slots'); // Open Hive box
+    setState(() {
+      _parkingSlots = parkingBox.values.toList(); // Load parking slots into the list
+    });
+  }
+
+  // Method to extract initials from the full name
+  String _getInitials(String fullName) {
+    List<String> nameParts = fullName.split(" ");
     return nameParts.length > 1
         ? "${nameParts[0][0]}${nameParts[1][0]}".toUpperCase()
-        : name[0].toUpperCase();
+        : fullName[0].toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: Color(0xFFE5EAF3),
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -32,17 +70,26 @@ class _DashboardPageState extends State<DashboardPage> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Greetings, $userName!"),
+            Text("Greetings, $_userName!"),
             CircleAvatar(
               backgroundColor: Color(0xFF07244C),
               child: Text(
-                getInitials(userName),
+                _userInitials, // Display initials
                 style: TextStyle(color: Colors.white),
               ),
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.menu),
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer(); // Open the drawer when menu icon is tapped
+            },
+          ),
+        ],
       ),
+      drawer: _buildDrawer(), // Build the sidebar drawer
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -58,10 +105,29 @@ class _DashboardPageState extends State<DashboardPage> {
                     borderSide: BorderSide(color: Color(0xFF07244C)),
                   ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
               ),
               SizedBox(height: 20),
 
-              // Filter Options: Distance, Price Range, Parking Type, Duration
+              // Map View
+              Container(
+                height: 300,
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(-1.286389, 36.817223), // Example coordinates for Nairobi
+                    zoom: 10,
+                  ),
+                  markers: _buildMarkers(), // Add markers based on parking slots
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // Filter Options: Price Range, Status
               _buildFilters(),
 
               SizedBox(height: 20),
@@ -70,102 +136,123 @@ class _DashboardPageState extends State<DashboardPage> {
               _buildParkingList(context),
 
               SizedBox(height: 20),
-
-              // Quick Action Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildQuickActionButton(
-                    icon: Icons.directions_car,
-                    label: "Book Parking",
-                    onTap: () {
-                      // Navigate to Booking Page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => BookingDetailsPage(
-                          parkingSpotName: "XYZ Parking Lot", // Example data
-                          bookingDate: "Jan 12, 2024", // Example data
-                          bookingTime: "3:00 PM - 5:00 PM", // Example data
-                          parkingSpaceType: "Covered", // Example data
-                          price: 20.00, // Example data
-                        )),
-                      );
-                    },
-                  ),
-                  _buildQuickActionButton(
-                    icon: Icons.receipt,
-                    label: "View Booking",
-                    onTap: () {
-                      // Navigate to Reservation Management Page
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => ReservationManagementPage()),
-                      );
-                    },
-                  ),
-                  _buildQuickActionButton(
-                    icon: Icons.history,
-                    label: "Payment History",
-                    onTap: () {
-                      // Handle Payment History tap
-                      print("Payment History clicked");
-                    },
-                  ),
-                  _buildQuickActionButton(
-                    icon: Icons.person,
-                    label: "Profile",
-                    onTap: () {
-                      // Handle Profile tap
-                      print("Profile clicked");
-                    },
-                  ),
-                ],
-              ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: CurvedNavigationBar(
-        backgroundColor: Color(0xFFE5EAF3),
-        color: Color(0xFF7671FA),
-        height: 60,
-        items: <Widget>[
-          Icon(Icons.home, size: 30, color: Color(0xFF07244C)),
-           Icon(Icons.feedback, size: 30, color: Color(0xFF07244C)),
-          Icon(Icons.settings, size: 30, color: Color(0xFF07244C)),
-          Icon(Icons.notifications, size: 30, color: Color(0xFF07244C)),
-          Icon(Icons.person, size: 30, color: Color(0xFF07244C)),
-        ],
-       onTap: (index) {
-    if (index == 1) {
-      // Navigate to the feedback submission page
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>  DriversSubmitFeedbackPage(), // Replace with your feedback page
-        ),
-      );
-    }
-    //Handle other taps if necessary
-    print("Nav bar item $index clicked");
-  },
-      ),
     );
   }
 
-  // Helper method to build Quick Action Buttons
-  Widget _buildQuickActionButton({required IconData icon, required String label, required Function() onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
+  // Helper method to build the sidebar (drawer)
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Color(0xFF07244C),
-            child: Icon(icon, color: Colors.white, size: 30),
+          DrawerHeader(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _userName.isNotEmpty ? _userName : 'User', // Display user's name or default
+                  style: TextStyle(color: Colors.white, fontSize: 24),
+                ),
+                SizedBox(height: 10),
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    _userInitials.isNotEmpty ? _userInitials : 'U', // Display initials or default
+                    style: TextStyle(
+                      color: Color(0xFF7671FA),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            decoration: BoxDecoration(
+              color: Color(0xFF7671FA),
+            ),
           ),
-          SizedBox(height: 8),
-          Text(label, style: TextStyle(color: Color(0xFF07244C))),
+          ListTile(
+            leading: Icon(Icons.receipt),
+            title: Text('View Booking'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ReservationManagementPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.history),
+            title: Text('Payment History'),
+            onTap: () {
+              //Navigator.push(
+              // context,
+              // MaterialPageRoute(builder: (context) => PaymentHistoryPage()), // Add this page
+              //);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.person),
+            title: Text('Profile'),
+            onTap: () {
+              //Navigator.push(
+              // context,
+              // MaterialPageRoute(builder: (context) => ProfilePage()), // Add this page
+              //);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.feedback),
+            title: Text('Submit Feedback'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => DriversSubmitFeedbackPage()), // Navigate to SubmitFeedbackPage
+              );
+            },
+          ),
+          // Add Notification ListTile with Icon
+          ListTile(
+            leading: Stack(
+              children: [
+                Icon(Icons.notifications), // Notification icon
+                Positioned(
+                  right: 0,
+                  child: Container(
+                    padding: EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    constraints: BoxConstraints(
+                      minWidth: 12,
+                      minHeight: 12,
+                    ),
+                    child: Text(
+                      '3', // Display number of notifications
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              ],
+            ),
+            title: Text('Notifications'),
+            onTap: () {
+              // Navigate to NotificationPage (make sure to create this page)
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => NotificationPage()), // Create and navigate to NotificationPage
+              );
+            },
+          ),
         ],
       ),
     );
@@ -176,7 +263,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Filters", style: TextStyle(fontWeight: FontWeight.bold)),
+        Text("Filters", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         SizedBox(height: 10),
 
         // Price Range Filter
@@ -184,62 +271,40 @@ class _DashboardPageState extends State<DashboardPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text("Price Range (Ksh)"),
-            RangeSlider(
-              values: _priceRange,
-              min: 0,
-              max: 200,
-              divisions: 10,
-              labels: RangeLabels(
-                "Ksh${_priceRange.start.round()}",
-                "Ksh${_priceRange.end.round()}",
+            Expanded(
+              child: RangeSlider(
+                values: _priceRange,
+                min: 0,
+                max: 200,
+                divisions: 20,
+                labels: RangeLabels(
+                  "Ksh${_priceRange.start.round()}",
+                  "Ksh${_priceRange.end.round()}",
+                ),
+                onChanged: (RangeValues newRange) {
+                  setState(() {
+                    _priceRange = newRange;
+                  });
+                },
               ),
-              onChanged: (RangeValues newRange) {
-                setState(() {
-                  _priceRange = newRange;
-                });
-              },
             ),
           ],
         ),
         SizedBox(height: 10),
 
-        // Parking Type Filter
+        // Status Filter
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Parking Type"),
+            Text("Status"),
             DropdownButton<String>(
-              value: _parkingType,
-              onChanged: (String? newType) {
+              value: _statusFilter,
+              onChanged: (String? newStatus) {
                 setState(() {
-                  _parkingType = newType!;
+                  _statusFilter = newStatus!;
                 });
               },
-              items: <String>['Covered', 'Uncovered', 'Valet']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-        SizedBox(height: 10),
-
-        // Parking Duration Filter
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("Parking Duration"),
-            DropdownButton<String>(
-              value: _parkingDuration,
-              onChanged: (String? newDuration) {
-                setState(() {
-                  _parkingDuration = newDuration!;
-                });
-              },
-              items: <String>['Hourly', 'Daily', 'Weekly']
+              items: <String>['All', 'Available', 'Occupied', 'Under Maintenance']
                   .map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -253,43 +318,96 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // Helper method to build Parking List
+  // Helper method to build Parking List from Hive
   Widget _buildParkingList(BuildContext context) {
-    return Container(
-      height: 300, // Adjust height as necessary
-      child: ListView.builder(
-        itemCount: 10, // Sample parking list length
-        itemBuilder: (context, index) {
-          return Card(
-            margin: EdgeInsets.symmetric(vertical: 10),
-            child: ListTile(
-              leading: Icon(Icons.local_parking, color: Color(0xFF07244C)),
-              title: Text('Parking Slot #$index'),
-              subtitle: Text('Available - Location XYZ'),
-              trailing: ElevatedButton(
-                onPressed: () {
-                  // Navigate to BookingDetails page when "Book Now" is clicked
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BookingDetailsPage(
-                        parkingSpotName: 'Parking Slot #$index', // Pass parking slot info
-                        bookingDate: "Jan 12, 2024", // Example data
-                        bookingTime: "3:00 PM - 5:00 PM", // Example data
-                        parkingSpaceType: "Covered", // Example data
-                        price: 20.00, // Example data
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF07244C),
+    // Filter parking slots based on search query and selected filters
+    final filteredSlots = _parkingSlots.where((slot) {
+      final matchesSearchQuery = slot.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesPrice = slot.price >= _priceRange.start && slot.price <= _priceRange.end;
+      final matchesStatus = _statusFilter == "All" || slot.status == _statusFilter;
+
+      return matchesSearchQuery && matchesPrice && matchesStatus;
+    }).toList();
+
+    if (filteredSlots.isEmpty) {
+      return Text("No parking slots match your search criteria.");
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: filteredSlots.length,
+      itemBuilder: (context, index) {
+        final parkingSlot = filteredSlots[index];
+        return GestureDetector(
+          onTap: () {
+            // Navigate to the booking page with the parking slot details
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BookingDetailsPage(
+                  parkingSpotName: parkingSlot.name,
+                  bookingDate: "Select Date", // Update this to be dynamic
+                  bookingTime: "Select Time", // Update this to be dynamic
+                  parkingSpaceType: parkingSlot.status, // Use the status as space type
+                  price: parkingSlot.price,
+                  pricePerHour: parkingSlot.price,
                 ),
-                child: Text("Book Now", style: TextStyle(color: Colors.white)),
+              ),
+            );
+          },
+          
+          child: Card(
+            elevation: 2,
+            child: ListTile(
+              title: Text(parkingSlot.name),
+              subtitle: Text("${parkingSlot.address} | ${parkingSlot.status}"),
+              trailing: Text(
+                "Ksh${parkingSlot.price}", // Display price
+                style: TextStyle(
+                  color: parkingSlot.status == 'Available'
+                      ? Colors.green
+                      : parkingSlot.status == 'Occupied'
+                          ? Colors.red
+                          : Colors.orange,
+                ),
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method to build markers for Google Map
+  Set<Marker> _buildMarkers() {
+    return _parkingSlots.map((parkingSlot) {
+      return Marker(
+        markerId: MarkerId(parkingSlot.id.toString()), // Unique ID for the marker
+        position: LatLng(parkingSlot.latitude, parkingSlot.longitude), // Corrected usage
+        infoWindow: InfoWindow(
+          title: parkingSlot.name,
+          snippet: '${parkingSlot.address} | Ksh${parkingSlot.price}',
+        ),
+      );
+    }).toSet();
+  }
+}
+
+// Create the NotificationPage
+class NotificationPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Notifications'),
+        backgroundColor: Color(0xFF7671FA),
+      ),
+      body: Center(
+        child: Text(
+          'You have 3 new notifications!',
+          style: TextStyle(fontSize: 18),
+        ),
       ),
     );
   }
