@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyAttjwaE27GH72nT55WRTVbr7bfgj9f-4M</string>
+	<key>GCM_SENDER_ID</key>
+	<string>996583440960</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.parkingBookingSystem</string>
+	<key>PROJECT_ID</key>
+	<string>parking-booking-app-71322</string>
+	<key>STORAGE_BUCKET</key>
+	<string>parking-booking-app-71322.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:996583440960:ios:095bf3f9cea81cc6a8d5a5</string>
+</dict>
+</plist>
