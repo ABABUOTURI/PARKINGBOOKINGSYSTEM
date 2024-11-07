@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:parking_booking_system/models/parking_location.dart';
-import 'package:parking_booking_system/models/payment.dart'; // Import your payment model
-import 'package:parking_booking_system/screens/Driver/PaymentConfirmation.dart'; // Assuming ParkingLocation is defined
+import 'package:parking_booking_system/models/payment.dart';
+import 'package:parking_booking_system/screens/Driver/PaymentConfirmation.dart';
 
 class BookingDetailsPage extends StatefulWidget {
   final String parkingSpotName;
@@ -10,7 +10,11 @@ class BookingDetailsPage extends StatefulWidget {
 
   BookingDetailsPage({
     required this.parkingSpotName,
-    required this.pricePerHour, required String bookingDate, required double price, required String parkingSpaceType, required String bookingTime,
+    required this.pricePerHour,
+    required String bookingDate,
+    required double price,
+    required String parkingSpaceType,
+    required String bookingTime,
   });
 
   @override
@@ -18,33 +22,31 @@ class BookingDetailsPage extends StatefulWidget {
 }
 
 class _BookingDetailsPageState extends State<BookingDetailsPage> {
-  int _selectedHours = 2; // Default parking hours
+  int _selectedHours = 2;
   double _totalPrice = 0.0;
-  String _bookingDate = ""; // To hold booking date
-  String _bookingTime = ""; // To hold booking time
+  String _bookingDate = "";
+  String _bookingTime = "";
 
   @override
   void initState() {
     super.initState();
-    _fetchPaymentData(); // Fetch payment data
-    _calculateTotalPrice(); // Calculate total price based on initial hours
+    _fetchPaymentData();
+    _calculateTotalPrice();
   }
 
-  // Fetch payment data from Hive
   void _fetchPaymentData() async {
-    final paymentBox = await Hive.openBox<Payment>('paymentBox'); // Open Hive box for payments
+    final paymentBox = await Hive.openBox<Payment>('paymentBox');
     if (paymentBox.isNotEmpty) {
-      Payment? payment = paymentBox.getAt(0); // Assuming you want the latest payment
+      Payment? payment = paymentBox.getAt(0);
       if (payment != null) {
         setState(() {
-          _bookingDate = payment.bookingDate; // Set booking date from payment
-          _bookingTime = payment.bookingTime; // Set booking time from payment
+          _bookingDate = payment.bookingDate;
+          _bookingTime = payment.bookingTime;
         });
       }
     }
   }
 
-  // Method to calculate total price
   void _calculateTotalPrice() {
     setState(() {
       _totalPrice = widget.pricePerHour * _selectedHours;
@@ -64,24 +66,14 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Parking Spot Location Name
             _buildDetailItem("Parking Spot Location", widget.parkingSpotName),
             SizedBox(height: 16),
-
-            // Date and Time of Booking
             _buildDetailItem("Date & Time", "$_bookingDate | $_bookingTime"),
             SizedBox(height: 16),
-
-            // Hours Slider
             _buildHoursSlider(),
-
             SizedBox(height: 16),
-
-            // Price Calculation
             _buildPriceSection(),
-            Spacer(), // Push Confirm Button to the bottom
-
-            // Confirm Booking Button
+            Spacer(),
             _buildConfirmButton(context),
           ],
         ),
@@ -89,7 +81,6 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     );
   }
 
-  // Helper to build detail items
   Widget _buildDetailItem(String title, String detail) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +105,6 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     );
   }
 
-  // Helper to build the hours slider
   Widget _buildHoursSlider() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,13 +120,13 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
         Slider(
           value: _selectedHours.toDouble(),
           min: 1,
-          max: 24, // Max 24 hours
-          divisions: 23, // 23 intervals (1 to 24 hours)
+          max: 24,
+          divisions: 23,
           label: "${_selectedHours} hours",
           onChanged: (double value) {
             setState(() {
               _selectedHours = value.toInt();
-              _calculateTotalPrice(); // Recalculate total price when hours are changed
+              _calculateTotalPrice();
             });
           },
         ),
@@ -148,7 +138,6 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     );
   }
 
-  // Helper to build the price section
   Widget _buildPriceSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +159,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
             Text(
-              "\$${widget.pricePerHour.toStringAsFixed(2)}",
+              "Ksh${widget.pricePerHour.toStringAsFixed(2)}",
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
           ],
@@ -184,7 +173,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
               style: TextStyle(fontSize: 16, color: Color(0xFF07244C)),
             ),
             Text(
-              "\$${_totalPrice.toStringAsFixed(2)}",
+              "Ksh${_totalPrice.toStringAsFixed(2)}",
               style: TextStyle(fontSize: 16, color: Color(0xFF07244C)),
             ),
           ],
@@ -193,24 +182,22 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     );
   }
 
-  // Helper to build the Confirm Booking button
   Widget _buildConfirmButton(BuildContext context) {
     return Center(
       child: ElevatedButton(
         onPressed: () {
-          // Navigate to the Payment Options Page
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => PaymentOptionsPage(
                 parkingSpotName: widget.parkingSpotName,
-                totalPrice: _totalPrice, // Pass the dynamically calculated total price
+                totalPrice: _totalPrice,
               ),
             ),
           );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF07244C), // Button background color
+          backgroundColor: Color(0xFF07244C),
           padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
@@ -228,7 +215,6 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
   }
 }
 
-// Payment Options Page
 class PaymentOptionsPage extends StatelessWidget {
   final String parkingSpotName;
   final double totalPrice;
@@ -269,19 +255,17 @@ class PaymentOptionsPage extends StatelessWidget {
     );
   }
 
-  // Helper to build payment method options
   Widget _buildPaymentMethod(String method) {
     return RadioListTile(
       title: Text(method),
       value: method,
-      groupValue: "paymentMethod", // Change this to a state variable if needed
+      groupValue: "paymentMethod",
       onChanged: (value) {
         // Handle payment method selection
       },
     );
   }
 
-  // Helper to build phone number input field
   Widget _buildPhoneNumberField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,7 +286,6 @@ class PaymentOptionsPage extends StatelessWidget {
     );
   }
 
-  // Helper to build review payment details section
   Widget _buildReviewDetails() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,27 +296,23 @@ class PaymentOptionsPage extends StatelessWidget {
         ),
         SizedBox(height: 8),
         Text("Parking Spot: $parkingSpotName"),
-        Text("Total Price: \$${totalPrice.toStringAsFixed(2)}"),
+        Text("Total Price: Ksh${totalPrice.toStringAsFixed(2)}"),
       ],
     );
   }
 
-  // Helper to build the Submit Payment button
   Widget _buildSubmitPaymentButton(BuildContext context) {
     return Center(
       child: ElevatedButton(
         onPressed: () {
-          // Assuming payment logic here (e.g., API call or payment gateway)
-
-          // After successful payment, navigate to PaymentConfirmationPage
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => PaymentConfirmationPage(
-                transactionId: "TXN123456",  // Pass the real transaction ID
-                bookingId: "BOOK123456",      // Pass the real booking ID
-                totalPrice: totalPrice,       // Pass the total price from payment
-                parkingSpotName: parkingSpotName,  // Pass parking spot name
+                transactionId: "TXN123456",
+                bookingId: "BOOK123456",
+                totalPrice: totalPrice,
+                parkingSpotName: parkingSpotName,
               ),
             ),
           );

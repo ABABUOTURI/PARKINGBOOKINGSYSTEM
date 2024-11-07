@@ -20,7 +20,7 @@ class ParkingLocation extends HiveObject {
   final double? pricePerHour;
 
   @HiveField(5) // Field index for status
-  final String status; // Status of parking (Occupied/Available)
+  late final String status; // Status of parking (Occupied/Available)
 
   ParkingLocation({
     required this.id,
