@@ -17,7 +17,10 @@ class Feedback extends HiveObject {
   final String date; // Date of feedback submission
 
   @HiveField(4)
-  final bool isResolved; // Status of feedback
+  bool isResolved; // Status of feedback resolution
+
+  @HiveField(5)
+  String ownerComment; // Comment by the parking owner based on feedback
 
   Feedback({
     required this.rating,
@@ -25,5 +28,6 @@ class Feedback extends HiveObject {
     required this.location,
     required this.date,
     this.isResolved = false, // Default value for isResolved
+    this.ownerComment = '', // Default empty value for ownerComment
   });
 }

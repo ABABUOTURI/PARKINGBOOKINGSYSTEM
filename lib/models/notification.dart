@@ -1,25 +1,18 @@
 import 'package:hive/hive.dart';
 
-part 'notification.g.dart'; // Hive will generate this adapter
+part 'notification.g.dart';  // Make sure this file is generated via build_runner
 
 @HiveType(typeId: 1)
-class CustomNotification extends HiveObject {
+class CustomNotification {
   @HiveField(0)
-  String? title;
-
+  final String message;
+  
   @HiveField(1)
-  String? message;
+  final DateTime timestamp;
 
   @HiveField(2)
-  String? date;
+  final String type;
 
-  @HiveField(3)
-  bool isRead;
-
-  CustomNotification({
-    required this.title,
-    required this.message,
-    required this.date,
-    this.isRead = false,
-  });
+  CustomNotification({required this.message, required this.timestamp, required this.type});
 }
+

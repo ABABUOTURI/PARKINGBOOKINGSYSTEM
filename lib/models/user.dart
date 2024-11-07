@@ -19,6 +19,8 @@ class User extends HiveObject{
   @HiveField(4)
   String role;
 
+  var name;
+
   User({
     required this.fullName,
     required this.email,

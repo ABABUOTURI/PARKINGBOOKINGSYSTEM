@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'payment.g.dart';
 
-@HiveType(typeId: 2) // Unique ID for the adapter
+@HiveType(typeId: 4) // Unique ID for the adapter
 class Payment {
   @HiveField(0) // Field index for payment ID
   final String id;

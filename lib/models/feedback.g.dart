@@ -22,13 +22,14 @@ class FeedbackAdapter extends TypeAdapter<Feedback> {
       location: fields[2] as String,
       date: fields[3] as String,
       isResolved: fields[4] as bool,
+      ownerComment: fields[5] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Feedback obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.rating)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class FeedbackAdapter extends TypeAdapter<Feedback> {
       ..writeByte(3)
       ..write(obj.date)
       ..writeByte(4)
-      ..write(obj.isResolved);
+      ..write(obj.isResolved)
+      ..writeByte(5)
+      ..write(obj.ownerComment);
   }
 
   @override

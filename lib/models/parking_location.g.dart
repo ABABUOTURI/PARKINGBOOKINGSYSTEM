@@ -8,7 +8,7 @@ part of 'parking_location.dart';
 
 class ParkingLocationAdapter extends TypeAdapter<ParkingLocation> {
   @override
-  final int typeId = 1;
+  final int typeId = 3;
 
   @override
   ParkingLocation read(BinaryReader reader) {
@@ -20,18 +20,16 @@ class ParkingLocationAdapter extends TypeAdapter<ParkingLocation> {
       id: fields[0] as String,
       name: fields[1] as String,
       address: fields[2] as String,
-      status: fields[3] as String,
-      price: fields[4] as double,
-      latitude: fields[5] as double,
-      longitude: fields[6] as double,
-      pricePerHour: fields[7] as double?,
+      price: fields[3] as double,
+      pricePerHour: fields[4] as double?,
+      status: fields[5] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ParkingLocation obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -39,15 +37,11 @@ class ParkingLocationAdapter extends TypeAdapter<ParkingLocation> {
       ..writeByte(2)
       ..write(obj.address)
       ..writeByte(3)
-      ..write(obj.status)
-      ..writeByte(4)
       ..write(obj.price)
+      ..writeByte(4)
+      ..write(obj.pricePerHour)
       ..writeByte(5)
-      ..write(obj.latitude)
-      ..writeByte(6)
-      ..write(obj.longitude)
-      ..writeByte(7)
-      ..write(obj.pricePerHour);
+      ..write(obj.status);
   }
 
   @override
